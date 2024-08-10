@@ -776,6 +776,10 @@ pub enum ExtensionType {
     /// represents UUIDs as FixedSizeBinary(16) with big-endian notation and
     /// does not interpret the bytes in any way.
     Uuid,
+    /// Extension name: `arrow.json`.
+    /// 
+    /// The storage type of the extension is `Utf8` with logical type `JSON`.
+    Json,
 }
 
 impl fmt::Display for ExtensionType {
@@ -796,6 +800,7 @@ impl ExtensionType {
     pub fn name(&self) -> &'static str {
         match self {
             ExtensionType::Uuid => "arrow.uuid",
+            ExtensionType::Json => "arrow.json",
         }
     }
 
@@ -803,6 +808,7 @@ impl ExtensionType {
     pub fn metadata(&self) -> Option<String> {
         match self {
             ExtensionType::Uuid => None,
+            ExtensionType::Json => None,
         }
     }
 
@@ -811,6 +817,7 @@ impl ExtensionType {
     pub(crate) fn supports_storage_type(&self, data_type: &DataType) -> bool {
         match self {
             ExtensionType::Uuid => matches!(data_type, DataType::FixedSizeBinary(16)),
+            ExtensionType::Json => matches!(data_type, DataType::Utf8),
         }
     }
 
@@ -825,6 +832,7 @@ impl ExtensionType {
             .get(ExtensionType::NAME_KEY)
             .and_then(|name| match name.as_str() {
                 "arrow.uuid" if metadata.is_none() => Some(ExtensionType::Uuid),
+                "arrow.json" if metadata.is_none() => Some(ExtensionType::Json),
                 _ => None,
             })
     }

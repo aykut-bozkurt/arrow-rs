@@ -505,7 +505,10 @@ fn arrow_to_parquet_type(field: &Field) -> Result<Type> {
         }
         DataType::Utf8 | DataType::LargeUtf8 => {
             Type::primitive_type_builder(name, PhysicalType::BYTE_ARRAY)
-                .with_logical_type(Some(LogicalType::String))
+                .with_logical_type(match field.extension_type() {
+                    Some(ExtensionType::Json) => Some(LogicalType::Json),
+                    _ => Some(LogicalType::String),
+                })
                 .with_repetition(repetition)
                 .with_id(id)
                 .build()
