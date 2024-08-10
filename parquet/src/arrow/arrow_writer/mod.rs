@@ -921,12 +921,12 @@ fn write_leaf(writer: &mut ColumnWriter<'_>, levels: &ArrayLevels) -> Result<usi
                             .unwrap();
                         get_interval_dt_array_slice(array, indices)
                     }
-                    _ => {
-                        return Err(ParquetError::NYI(
-                            format!(
-                                "Attempting to write an Arrow interval type {interval_unit:?} to parquet that is not yet implemented"
-                            )
-                        ));
+                    IntervalUnit::MonthDayNano => {
+                        let array = column
+                            .as_any()
+                            .downcast_ref::<arrow_array::IntervalMonthDayNanoArray>()
+                            .unwrap();
+                        get_interval_mdn_array_slice(array, indices)
                     }
                 },
                 ArrowDataType::FixedSizeBinary(_) => {
@@ -1014,6 +1014,24 @@ fn get_interval_dt_array_slice(
         let value = array.value(*i);
         out[4..8].copy_from_slice(&value.days.to_le_bytes());
         out[8..12].copy_from_slice(&value.milliseconds.to_le_bytes());
+        values.push(FixedLenByteArray::from(ByteArray::from(out.to_vec())));
+    }
+    values
+}
+
+/// Returns 12-byte values representing 3 values of months, days and milliseconds (4-bytes each).
+fn get_interval_mdn_array_slice(
+    array: &arrow_array::IntervalMonthDayNanoArray,
+    indices: &[usize],
+) -> Vec<FixedLenByteArray> {
+    let mut values = Vec::with_capacity(indices.len());
+    for i in indices {
+        let mut out = [0; 12];
+        let value = array.value(*i);
+        let millis = value.nanoseconds as i32;
+        out[0..4].copy_from_slice(&value.months.to_le_bytes());
+        out[4..8].copy_from_slice(&value.days.to_le_bytes());
+        out[8..12].copy_from_slice(&millis.to_le_bytes());
         values.push(FixedLenByteArray::from(ByteArray::from(out.to_vec())));
     }
     values
